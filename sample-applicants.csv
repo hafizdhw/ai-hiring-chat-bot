@@ -1,0 +1,6 @@
+applicant_id,full_name,email,role_title,project_name,application_status,seniority_level,applicant_alias
+1,Aaron Kim,aaron.kim@example.com,Backend Engineer,Atlas Analytics,PASSED,Mid,AKim
+2,Sarah Johnson,sarah.johnson@example.com,Frontend Developer,CloudSync,PENDING,Senior,SJohnson
+3,Michael Chen,michael.chen@example.com,DevOps Engineer,DataFlow,REJECTED,Junior,MChen
+4,Emily Davis,emily.davis@example.com,Full Stack Developer,WebApp Pro,PASSED,Senior,EDavis
+5,David Wilson,david.wilson@example.com,Data Scientist,AI Platform,PENDING,Mid,DWilson

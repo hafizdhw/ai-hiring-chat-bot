@@ -142,10 +142,22 @@ The application will be available at `http://localhost:3000`
 
 ## Usage
 
-### 1. Upload Candidate Data
+### 1. Upload Data
 
+#### Upload Applicant Data
 1. Navigate to the Upload page
-2. Select a CSV file with the following columns:
+2. Select a CSV file with applicant data containing the following columns:
+   - `applicant_id`
+   - `full_name`
+   - `email`
+   - `role_title`
+   - `project_name`
+   - `application_status`
+   - `seniority_level`
+   - `applicant_alias`
+
+#### Upload Interview Data
+1. Select a CSV file with interview data containing the following columns:
    - `applicant_id`
    - `interviewer_name`
    - `interview_timestamp_utc`
@@ -170,32 +182,52 @@ The application will be available at `http://localhost:3000`
 
 The AI will search through candidate data using semantic similarity and provide relevant responses.
 
-## CSV Format Example
+## CSV Format Examples
 
+### Applicant Data
+```csv
+applicant_id,full_name,email,role_title,project_name,application_status,seniority_level,applicant_alias
+1,Aaron Kim,aaron.kim@example.com,Backend Engineer,Atlas Analytics,PASSED,Mid,AKim
+2,Sarah Johnson,sarah.johnson@example.com,Frontend Developer,CloudSync,PENDING,Senior,SJohnson
+```
+
+### Interview Data
 ```csv
 applicant_id,interviewer_name,interview_timestamp_utc,professional_summary,primary_language,database_technology,cloud_provider,other_technologies,live_code_summary
-APP001,John Smith,2024-01-15T10:00:00Z,Experienced full-stack developer with 5 years in React and Node.js,Python,PostgreSQL,AWS,React,Node.js,TypeScript,Excellent problem-solving skills and clean code
-APP002,Jane Doe,2024-01-16T14:30:00Z,Senior backend engineer specializing in microservices and cloud architecture,Java,MongoDB,GCP,Spring Boot,Docker,Kubernetes,Strong system design knowledge
+1,John Smith,2024-01-15T10:00:00Z,Experienced backend engineer with 5 years in Java and Spring Boot development,Java,PostgreSQL,AWS,Spring Boot,Docker,Kubernetes,Excellent problem-solving skills and clean code
+2,Jane Doe,2024-01-16T14:30:00Z,Senior frontend developer with 8 years of experience in React and modern JavaScript frameworks,JavaScript,MySQL,GCP,React,Vue.js,TypeScript,Strong frontend implementation skills
 ```
 
 ## API Endpoints
 
 ### POST /api/upload
-Upload candidate data from CSV.
+Upload applicant and interview data from CSV.
 
 **Request Body:**
 ```json
 {
-  "candidates": [
+  "applicants": [
     {
-      "applicant_id": "APP001",
+      "applicant_id": "1",
+      "full_name": "Aaron Kim",
+      "email": "aaron.kim@example.com",
+      "role_title": "Backend Engineer",
+      "project_name": "Atlas Analytics",
+      "application_status": "PASSED",
+      "seniority_level": "Mid",
+      "applicant_alias": "AKim"
+    }
+  ],
+  "interviews": [
+    {
+      "applicant_id": "1",
       "interviewer_name": "John Smith",
       "interview_timestamp_utc": "2024-01-15T10:00:00Z",
       "professional_summary": "...",
-      "primary_language": "Python",
+      "primary_language": "Java",
       "database_technology": "PostgreSQL",
       "cloud_provider": "AWS",
-      "other_technologies": "React,Node.js",
+      "other_technologies": "Spring Boot,Docker,Kubernetes",
       "live_code_summary": "..."
     }
   ]
@@ -221,8 +253,25 @@ Chat with AI assistant about candidates.
 
 ## Database Schema
 
+### Applicants Table
 ```sql
-CREATE TABLE candidates (
+CREATE TABLE applicants (
+  id SERIAL PRIMARY KEY,
+  applicant_id VARCHAR(255) UNIQUE NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  role_title VARCHAR(255) NOT NULL,
+  project_name VARCHAR(255),
+  application_status VARCHAR(50) NOT NULL,
+  seniority_level VARCHAR(50) NOT NULL,
+  applicant_alias VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Interviews Table
+```sql
+CREATE TABLE interviews (
   id SERIAL PRIMARY KEY,
   applicant_id VARCHAR(255) NOT NULL,
   interviewer_name VARCHAR(255) NOT NULL,
@@ -234,7 +283,8 @@ CREATE TABLE candidates (
   other_technologies TEXT,
   live_code_summary TEXT,
   professional_summary_embedding vector(1536),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE
 );
 ```
 

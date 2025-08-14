@@ -14,25 +14,33 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return response.data[0].embedding
 }
 
-async function searchCandidates(query: string, limit: number = 5) {
+async function searchInterviews(query: string, limit: number = 5) {
   const queryEmbedding = await generateEmbedding(query)
   
   const client = await pool.connect()
   try {
     const result = await client.query(
       `SELECT 
-        applicant_id,
-        interviewer_name,
-        interview_timestamp_utc,
-        professional_summary,
-        primary_language,
-        database_technology,
-        cloud_provider,
-        other_technologies,
-        live_code_summary,
-        1 - (professional_summary_embedding <=> $1) as similarity
-      FROM candidates 
-      ORDER BY professional_summary_embedding <=> $1
+        i.applicant_id,
+        a.full_name,
+        a.email,
+        a.role_title,
+        a.project_name,
+        a.application_status,
+        a.seniority_level,
+        a.applicant_alias,
+        i.interviewer_name,
+        i.interview_timestamp_utc,
+        i.professional_summary,
+        i.primary_language,
+        i.database_technology,
+        i.cloud_provider,
+        i.other_technologies,
+        i.live_code_summary,
+        1 - (i.professional_summary_embedding <=> $1) as similarity
+      FROM interviews i
+      LEFT JOIN applicants a ON i.applicant_id = a.applicant_id
+      ORDER BY i.professional_summary_embedding <=> $1
       LIMIT $2`,
       [JSON.stringify(queryEmbedding), limit]
     )
@@ -54,28 +62,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Search for relevant candidates
-    const relevantCandidates = await searchCandidates(message, 5)
+    // Search for relevant interviews
+    const relevantInterviews = await searchInterviews(message, 5)
 
-    if (relevantCandidates.length === 0) {
+    if (relevantInterviews.length === 0) {
       return NextResponse.json({
-        response: "I don't have any candidate data to search through. Please upload some candidate data first using the upload page."
+        response: "I don't have any interview data to search through. Please upload some applicant and interview data first using the upload page."
       })
     }
 
-    // Create context from relevant candidates
-    const context = relevantCandidates.map((candidate, index) => `
+    // Create context from relevant interviews
+    const context = relevantInterviews.map((interview: any, index: number) => `
 Candidate ${index + 1}:
-- Applicant ID: ${candidate.applicant_id}
-- Interviewer: ${candidate.interviewer_name}
-- Interview Date: ${candidate.interview_timestamp_utc}
-- Primary Language: ${candidate.primary_language}
-- Database Technology: ${candidate.database_technology}
-- Cloud Provider: ${candidate.cloud_provider}
-- Other Technologies: ${candidate.other_technologies}
-- Professional Summary: ${candidate.professional_summary}
-- Live Code Summary: ${candidate.live_code_summary}
-- Relevance Score: ${(candidate.similarity * 100).toFixed(1)}%
+- Applicant ID: ${interview.applicant_id}
+- Full Name: ${interview.full_name || 'N/A'}
+- Email: ${interview.email || 'N/A'}
+- Role Title: ${interview.role_title || 'N/A'}
+- Project: ${interview.project_name || 'N/A'}
+- Status: ${interview.application_status || 'N/A'}
+- Seniority: ${interview.seniority_level || 'N/A'}
+- Alias: ${interview.applicant_alias || 'N/A'}
+- Interviewer: ${interview.interviewer_name}
+- Interview Date: ${interview.interview_timestamp_utc}
+- Primary Language: ${interview.primary_language}
+- Database Technology: ${interview.database_technology}
+- Cloud Provider: ${interview.cloud_provider}
+- Other Technologies: ${interview.other_technologies}
+- Professional Summary: ${interview.professional_summary}
+- Live Code Summary: ${interview.live_code_summary}
+- Relevance Score: ${(interview.similarity * 100).toFixed(1)}%
 `).join('\n\n')
 
     // Generate AI response

@@ -4,7 +4,18 @@ import { useState } from 'react'
 import { Upload, ArrowLeft, Save, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-interface Candidate {
+interface Applicant {
+  applicant_id: string
+  full_name: string
+  email: string
+  role_title: string
+  project_name: string
+  application_status: string
+  seniority_level: string
+  applicant_alias: string
+}
+
+interface Interview {
   applicant_id: string
   interviewer_name: string
   interview_timestamp_utc: string
@@ -18,7 +29,8 @@ interface Candidate {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
-  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [applicants, setApplicants] = useState<Applicant[]>([])
+  const [interviews, setInterviews] = useState<Interview[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,27 +55,59 @@ export default function UploadPage() {
       const lines = text.split('\n')
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
       
-      const parsedCandidates: Candidate[] = []
+      // Check if this is applicant data or interview data based on headers
+      const isApplicantData = headers.includes('full_name') && headers.includes('email')
+      const isInterviewData = headers.includes('interviewer_name') && headers.includes('professional_summary')
       
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
-          const candidate: Candidate = {
-            applicant_id: values[0] || '',
-            interviewer_name: values[1] || '',
-            interview_timestamp_utc: values[2] || '',
-            professional_summary: values[3] || '',
-            primary_language: values[4] || '',
-            database_technology: values[5] || '',
-            cloud_provider: values[6] || '',
-            other_technologies: values[7] || '',
-            live_code_summary: values[8] || '',
+      if (isApplicantData) {
+        const parsedApplicants: Applicant[] = []
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+            const applicant: Applicant = {
+              applicant_id: values[0] || '',
+              full_name: values[1] || '',
+              email: values[2] || '',
+              role_title: values[3] || '',
+              project_name: values[4] || '',
+              application_status: values[5] || '',
+              seniority_level: values[6] || '',
+              applicant_alias: values[7] || '',
+            }
+            parsedApplicants.push(applicant)
           }
-          parsedCandidates.push(candidate)
         }
+        
+        setApplicants(parsedApplicants)
+        setInterviews([])
+      } else if (isInterviewData) {
+        const parsedInterviews: Interview[] = []
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+            const interview: Interview = {
+              applicant_id: values[0] || '',
+              interviewer_name: values[1] || '',
+              interview_timestamp_utc: values[2] || '',
+              professional_summary: values[3] || '',
+              primary_language: values[4] || '',
+              database_technology: values[5] || '',
+              cloud_provider: values[6] || '',
+              other_technologies: values[7] || '',
+              live_code_summary: values[8] || '',
+            }
+            parsedInterviews.push(interview)
+          }
+        }
+        
+        setInterviews(parsedInterviews)
+        setApplicants([])
+      } else {
+        setError('CSV file must contain either applicant data (with full_name, email) or interview data (with interviewer_name, professional_summary)')
+        return
       }
-
-      setCandidates(parsedCandidates)
     } catch (err) {
       setError('Error parsing CSV file')
     } finally {
@@ -72,7 +116,7 @@ export default function UploadPage() {
   }
 
   const handleUpload = async () => {
-    if (!candidates.length) return
+    if (!applicants.length && !interviews.length) return
 
     setIsUploading(true)
     setError(null)
@@ -83,18 +127,21 @@ export default function UploadPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ candidates }),
+        body: JSON.stringify({ applicants, interviews }),
       })
 
       if (!response.ok) {
         throw new Error('Upload failed')
       }
 
-      setSuccess(`Successfully uploaded ${candidates.length} candidates`)
-      setCandidates([])
+      const data = await response.json()
+      const totalUploaded = (applicants.length || 0) + (interviews.length || 0)
+      setSuccess(`Successfully uploaded ${totalUploaded} records (${applicants.length} applicants, ${interviews.length} interviews)`)
+      setApplicants([])
+      setInterviews([])
       setFile(null)
     } catch (err) {
-      setError('Failed to upload candidates')
+      setError('Failed to upload data')
     } finally {
       setIsUploading(false)
     }
@@ -117,7 +164,7 @@ export default function UploadPage() {
               <span>Upload Candidate Data</span>
             </h2>
             <p className="text-gray-600 mt-2">
-              Upload a CSV file containing candidate interview data. The file should include headers for all required fields.
+              Upload a CSV file containing either applicant data or interview data. The file should include headers for all required fields.
             </p>
           </div>
           <div className="card-content space-y-4">
@@ -152,12 +199,69 @@ export default function UploadPage() {
           </div>
         </div>
 
-        {candidates.length > 0 && (
+        {applicants.length > 0 && (
           <div className="card">
             <div className="card-header">
-              <h3 className="text-xl font-semibold text-gray-900">Preview ({candidates.length} candidates)</h3>
+              <h3 className="text-xl font-semibold text-gray-900">Preview ({applicants.length} applicants)</h3>
               <p className="text-gray-600 mt-2">
-                Review the data before uploading to the database.
+                Review the applicant data before uploading to the database.
+              </p>
+            </div>
+            <div className="card-content">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applicant ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seniority</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {applicants.slice(0, 10).map((applicant, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                          {applicant.applicant_id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{applicant.full_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{applicant.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{applicant.role_title}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{applicant.application_status}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{applicant.seniority_level}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {applicants.length > 10 && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Showing first 10 of {applicants.length} applicants
+                </p>
+              )}
+
+              <div className="mt-4">
+                <button 
+                  onClick={handleUpload} 
+                  disabled={isUploading}
+                  className="btn-primary w-full"
+                >
+                  {isUploading ? 'Uploading...' : `Upload ${applicants.length} Applicants`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {interviews.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <h3 className="text-xl font-semibold text-gray-900">Preview ({interviews.length} interviews)</h3>
+              <p className="text-gray-600 mt-2">
+                Review the interview data before uploading to the database.
               </p>
             </div>
             <div className="card-content">
@@ -174,25 +278,25 @@ export default function UploadPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {candidates.slice(0, 10).map((candidate, index) => (
+                    {interviews.slice(0, 10).map((interview, index) => (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                          {candidate.applicant_id}
+                          {interview.applicant_id}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{candidate.interviewer_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{candidate.interview_timestamp_utc}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{candidate.primary_language}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{candidate.database_technology}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{candidate.cloud_provider}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{interview.interviewer_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{interview.interview_timestamp_utc}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{interview.primary_language}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{interview.database_technology}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{interview.cloud_provider}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               
-              {candidates.length > 10 && (
+              {interviews.length > 10 && (
                 <p className="text-sm text-gray-500 mt-2">
-                  Showing first 10 of {candidates.length} candidates
+                  Showing first 10 of {interviews.length} interviews
                 </p>
               )}
 
@@ -202,7 +306,7 @@ export default function UploadPage() {
                   disabled={isUploading}
                   className="btn-primary w-full"
                 >
-                  {isUploading ? 'Uploading...' : `Upload ${candidates.length} Candidates`}
+                  {isUploading ? 'Uploading...' : `Upload ${interviews.length} Interviews`}
                 </button>
               </div>
             </div>

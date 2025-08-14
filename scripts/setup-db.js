@@ -28,11 +28,31 @@ async function setupDatabase() {
   try {
     console.log('Setting up database...')
     
-    // Create the candidates table with pgvector support
-    const createTableQuery = `
+    // Create the applicants table
+    const createApplicantsTable = `
+      CREATE TABLE IF NOT EXISTS applicants (
+        id SERIAL PRIMARY KEY,
+        applicant_id VARCHAR(255) UNIQUE NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        role_title VARCHAR(255) NOT NULL,
+        project_name VARCHAR(255),
+        application_status VARCHAR(50) NOT NULL,
+        seniority_level VARCHAR(50) NOT NULL,
+        applicant_alias VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS applicants_applicant_id_idx ON applicants(applicant_id);
+      CREATE INDEX IF NOT EXISTS applicants_email_idx ON applicants(email);
+      CREATE INDEX IF NOT EXISTS applicants_status_idx ON applicants(application_status);
+    `
+    
+    // Create the interviews table with pgvector support
+    const createInterviewsTable = `
       CREATE EXTENSION IF NOT EXISTS vector;
       
-      CREATE TABLE IF NOT EXISTS candidates (
+      CREATE TABLE IF NOT EXISTS interviews (
         id SERIAL PRIMARY KEY,
         applicant_id VARCHAR(255) NOT NULL,
         interviewer_name VARCHAR(255) NOT NULL,
@@ -44,15 +64,17 @@ async function setupDatabase() {
         other_technologies TEXT,
         live_code_summary TEXT,
         professional_summary_embedding vector(1536),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE
       );
       
-      CREATE INDEX IF NOT EXISTS candidates_applicant_id_idx ON candidates(applicant_id);
-      CREATE INDEX IF NOT EXISTS candidates_interviewer_name_idx ON candidates(interviewer_name);
-      CREATE INDEX IF NOT EXISTS candidates_interview_timestamp_idx ON candidates(interview_timestamp_utc);
+      CREATE INDEX IF NOT EXISTS interviews_applicant_id_idx ON interviews(applicant_id);
+      CREATE INDEX IF NOT EXISTS interviews_interviewer_name_idx ON interviews(interviewer_name);
+      CREATE INDEX IF NOT EXISTS interviews_interview_timestamp_idx ON interviews(interview_timestamp_utc);
     `
     
-    await pool.query(createTableQuery)
+    await pool.query(createApplicantsTable)
+    await pool.query(createInterviewsTable)
     console.log('Database setup completed successfully!')
     
   } catch (error) {
