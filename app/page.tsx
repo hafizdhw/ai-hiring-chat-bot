@@ -1,13 +1,28 @@
+'use client'
+
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
 import { Upload, MessageSquare, Users, Brain, Zap, ArrowRight, CheckCircle } from 'lucide-react'
 
 export default function HomePage() {
+  const { user, loading } = useAuth()
+
+  const handleGetStarted = () => {
+    if (user) {
+      // User is logged in, redirect to dashboard
+      window.location.href = '/dashboard'
+    } else {
+      // User is not logged in, redirect to sign in
+      window.location.href = '/signin'
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
           <div className="text-center">
             <div className="flex justify-center mb-6">
               <div className="glass-effect rounded-full p-4">
@@ -24,12 +39,14 @@ export default function HomePage() {
               Upload data, ask questions, and get intelligent insights instantly.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link href="/upload">
-                <button className="btn-primary text-lg px-8 py-4">
-                  <Upload className="h-5 w-5 mr-2" />
-                  Get Started
-                </button>
-              </Link>
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading}
+                className="btn-primary text-lg px-8 py-4"
+              >
+                <Upload className="h-5 w-5 mr-2" />
+                {loading ? 'Loading...' : 'Get Started'}
+              </button>
               <Link href="/chat">
                 <button className="btn-outline text-lg px-8 py-4">
                   <MessageSquare className="h-5 w-5 mr-2" />
@@ -79,9 +96,13 @@ export default function HomePage() {
                   Automatic data validation
                 </div>
               </div>
-              <Link href="/upload" className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium">
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading}
+                className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+              >
                 Upload Now <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -111,9 +132,13 @@ export default function HomePage() {
                   Context-aware responses
                 </div>
               </div>
-              <Link href="/chat" className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium">
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading}
+                className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+              >
                 Start Chatting <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -143,9 +168,13 @@ export default function HomePage() {
                   Relevance scoring
                 </div>
               </div>
-              <Link href="/chat" className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium">
+              <button 
+                onClick={handleGetStarted}
+                disabled={loading}
+                className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+              >
                 Explore Insights <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
+              </button>
             </div>
           </div>
         </div>
